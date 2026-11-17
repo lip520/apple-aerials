@@ -1,0 +1,6 @@
+# 构建产物
+*.exe
+*.obj
+*.pdb
+*.ilk
+*.tmp
