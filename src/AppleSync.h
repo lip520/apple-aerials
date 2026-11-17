@@ -57,6 +57,11 @@ bool clips_from_entries(const std::string& entriesJson,
                         const std::map<std::wstring, std::wstring>& en,
                         std::vector<AppleClip>& out);
 
+// 内置 extras：macOS 专有片源（Tahoe/Goa/喜马拉雅/喀拉拉茶田 共 15 条）。
+// 这些片源走 WallpaperFramework 自有分发，官方 resources-N.tar 清单永远
+// 不会包含它们；同步时按 id 去重自动补齐，重新生成清单不丢失。
+std::vector<AppleClip> builtin_extras();
+
 // 按 id 合并：baseJsons 按清单加载优先级排列（旧条目原样保留，首个
 // 出现者胜出），fresh 中的新 id 追加到尾部；返回合并后清单 JSON 文本
 // （UTF-8），total = 合并后总数，added = 新增条数

@@ -417,6 +417,70 @@ bool clips_from_entries(const std::string& entriesJson,
 }
 
 // ------------------------------------------------------------
+// builtin_extras：内置 macOS 专有片源（WallpaperFramework 自有分发，
+// 不在 resources-N.tar 公开目录中）。仅 4K SDR 单档直链，故
+// url/hevc/uhd 同链、dv 留空；id 取 Apple 资产 UUID 便于追溯。
+// ------------------------------------------------------------
+std::vector<AppleClip> builtin_extras() {
+    struct Extra {
+        const wchar_t* id;
+        const wchar_t* label;
+        const wchar_t* file;
+    };
+    static const wchar_t kBase[] =
+        L"https://sylvan.apple.com/itunes-assets/Aerials116/v4/cb/5b/50/"
+        L"cb5b5035-6701-619f-9065-3d7d0e5fbef4/";
+    static const Extra kExtras[] = {
+        // 太浩湖（Tahoe）×4
+        {L"4C108785-A7BA-422E-9C79-B0129F1D5550", L"Tahoe Day",
+         L"LIGHT02_20250613_V2_sdr_4k_rate12000_240p_t2160_grover74_tsa_MTE-Modified.mov"},
+        {L"B2FC91ED-6891-4DEB-85A1-268B2B4160B6", L"Tahoe Morning",
+         L"LIGHT01_20250623_V3_sdr_4k_rate12000_240p_t2160_grover74_tsa_nclc111.mov"},
+        {L"52ACB9B8-75FC-4516-BC60-4550CFF3B661", L"Tahoe Evening",
+         L"DARK01_20250703_v10_sdr_4k_rate12000_240p_t2160_grover74_tsa_nclc111.mov"},
+        {L"CF6347E2-4F81-4410-8892-4830991B6C5A", L"Tahoe Night",
+         L"DARK02_20250719_V1_FRC_240fps_sdr_4k_rate12000_240p_t2160_grover74_tsa_nclc111.mov"},
+        // 果阿（Goa）×2
+        {L"B13D40FC-C033-436D-A197-185900EC3552", L"Goa Beaches",
+         L"SDR_ann0060_flamecomp_v0003.00815886_FRC_sdr_4k_rate12000_240p_t2160_grover74_tsa.mov"},
+        {L"8A51AAE4-6ED6-432B-A222-4081D1F29D24", L"Goa Coast",
+         L"SDR_ann0080_flamecomp_v0004.00853686_sdr_4k_rate14000_240p_t2160_grover74_tsa.mov"},
+        // 喜马拉雅（Uttarakhand）×5
+        {L"73120738-3D8D-47E7-B6E9-8AAC4D352577", L"Through Himalayas",
+         L"SDR_ann0020_flamecomp_v0003.00776567_FRC_sdr_4k_rate12000_240p_t2160_grover74_tsa.mov"},
+        {L"0FA98CA1-0005-4C98-8DCF-8BE7A6B159CE", L"Himalayas Day",
+         L"SDR_ann0090_flamecomp_v0007.00872132_sdr_4k_rate12000_240p_t2160_grover74_tsa.mov"},
+        {L"B6461ECC-44F5-4BC9-877F-484A605D0D10", L"The Ganges",
+         L"SDR_ann0110_flamecomp_v0002.00896432_trim_FRC_sdr_4k_rate14000_240p_t2160_grover74_tsa.mov"},
+        {L"5929F26F-992D-4729-AFCC-BCDF23D15C32", L"Ghansali from Above",
+         L"SDR_ann0010_flamecomp_v0007.00735687_edit_FRC_sdr_4k_rate12000_240p_t2160_grover74_tsa.mov"},
+        {L"A63179A7-BC32-4307-89F0-112694889A03", L"Himalayan Peaks",
+         L"SDR_ann0120_flamecomp_v0011.00400416_FRC_sdr_4k_rate12000_240p_t2160_grover74_tsa.mov"},
+        // 喀拉拉茶田（Kerala）×4
+        {L"9C77AC8C-B23D-4ED9-ABD5-73D3CAD38317", L"Tea Gardens from Above",
+         L"SDR_ann0040_flamecomp_v0006.00789786_sdr_4k_rate16000_240p_t2160_grover74_tsa.mov"},
+        {L"4E9FE515-65B1-4677-B1A0-CAB75BDA1480", L"Tea Gardens Day",
+         L"SDR_ann0100_flamecomp_v0002.00880232_FRC_sdr_4k_rate12000_240p_t2160_grover74_tsa.mov"},
+        {L"20633C28-FF90-4C54-B828-BB7F1669F7B4", L"Reservoir Day",
+         L"SDR_ann0070_flamecomp_v0008.00289423_sdr_4k_rate12000_240p_t2160_grover74_tsa.mov"},
+        {L"A92E4A3F-9BFC-4772-B3A7-025B54AB1D3D", L"Tea Gardens Mist",
+         L"SDR_ann0130_flamecomp_v0002.00193199_FRC_sdr_4k_rate12000_240p_t2160_grover74_tsa.mov"},
+    };
+
+    std::vector<AppleClip> out;
+    out.reserve(std::size(kExtras));
+    for (const Extra& e : kExtras) {
+        AppleClip c;
+        c.id = e.id;
+        c.label = e.label;
+        c.category = L"landscapes";
+        c.url = c.hevc = c.uhd = std::wstring(kBase) + e.file;
+        out.push_back(std::move(c));
+    }
+    return out;
+}
+
+// ------------------------------------------------------------
 // merge_catalog：按 id 合并（底本条目原样保序保留，新 id 追加尾部）
 // ------------------------------------------------------------
 std::string merge_catalog(const std::vector<std::string>& baseJsons,
@@ -686,9 +750,17 @@ SyncResult sync_catalog(const std::vector<std::filesystem::path>& basePaths,
     if (!zhBytes.empty()) parse_strings(zhBytes, zh);
     if (!enBytes.empty()) parse_strings(enBytes, en);
 
-    // 4) 映射 + 合并（底本取全部候选 union，按 id 去重首现胜出）
+    // 4) 映射 + 合并（底本取全部候选 union，按 id 去重首现胜出）；
+    //    内置 extras（macOS 专有 15 条）一并参与合并：底本已有则跳过，
+    //    缺失（如从零重建清单）则自动补齐，重新生成不丢失
     std::vector<AppleClip> fresh;
     if (!clips_from_entries(entries, zh, en, fresh)) return result;
+    {
+        std::vector<AppleClip> extras = builtin_extras();
+        fresh.insert(fresh.end(),
+                     std::make_move_iterator(extras.begin()),
+                     std::make_move_iterator(extras.end()));
+    }
 
     const std::vector<std::filesystem::path> bases =
         basePaths.empty() ? DefaultBasePaths(output) : basePaths;
